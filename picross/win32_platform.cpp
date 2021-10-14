@@ -1,5 +1,4 @@
-﻿// Add comments
-// Add keyboard controls as alternate to mouse
+﻿// Add keyboard controls as alternate to mouse
 // Add counter when you drag your mouse while holding a button
 
 // Packages that are used in the program
@@ -48,14 +47,19 @@ const COLORREF SPACER_COLOR = RGB(150, 150, 150);
 const COLORREF SPACER_LINE_COLOR = RGB(150, 150, 150);
 const COLORREF NUM_GRID_LINE_COLOR = RGB(100, 100, 100);
 
+// Random puzzles relies on the time to create a seed, if it is off, the puzzles will start with a set seed
 const bool RANDOM_PUZZLES = true;
+// Starts with all the correct spaces filled in if this is true
 const bool SHOW_ANSWER = false;
 
+// Returns true or false based on the percent (as a decimal). Accurate to 6 decimal places.
 bool rand_chance(double percent) {
+	// Skips any processing if the percent is equal to or above 100%
 	if (percent >= 1) {
 		return true;
 	}
 
+	// Counts the decimal places to decide the range for calculating the change, more decimals goes up in range since they need to be integers
 	int num_decimals = 0;
 	double num = percent;
 	while (num_decimals <= 6) {
@@ -76,6 +80,7 @@ bool rand_chance(double percent) {
 	return result;
 }
 
+// Grid class for the board, this holds the basic structure for the grid for position and size
 class GRID {
 	public:
 		int x = GRID_X;
@@ -84,20 +89,26 @@ class GRID {
 		double dy = GRID_DY;
 };
 
+// The board class is the main class for picross. It holds the information for the current board and the correct board as 
+// well as providing methods for manipulating and checking these boards
 class BOARD {
 	public:
 		int width = BOARD_WIDTH;
 		int height = BOARD_HEIGHT;
 
+		// The cur_spaces and correct_spaces variables are used to check if it is possible that the current board may be correct.
+		// Whenever a space is added, this goes up and once they are equal, it starts checking if they are correct.
 		int cur_board[BOARD_WIDTH][BOARD_HEIGHT];
 		int cur_spaces = 0;
 
 		int correct_board[BOARD_WIDTH][BOARD_HEIGHT];
 		int correct_spaces = 0;
 
+		// Holds the information for number hints in the columns and rows. They have to be vectors since the size is unknown before hand
 		array<vector<int>, BOARD_WIDTH> column_nums;
 		array<vector<int>, BOARD_HEIGHT> row_nums;
 
+		// Used for changing the size of the grid since more number hints need more space
 		int highest_column_count = 0;
 		int highest_row_count = 0;
 
@@ -105,10 +116,13 @@ class BOARD {
 
 		BOARD();
 
+		// Should be run whenever the window size changes so that the board size can be adjusted accordingly
+		// Should also be run if the number hints have changed
 		void update(HWND hwnd) {
 			grid.dx = (window_width) / (BOARD_WIDTH + highest_row_count);
 			grid.dy = (window_height) / (BOARD_HEIGHT + highest_column_count);
 
+			// Restricts the aspect ratio of the board so that it is 1:1
 			if (grid.dx > grid.dy) {
 				grid.dx = grid.dy;
 			}
@@ -116,12 +130,15 @@ class BOARD {
 				grid.dy = grid.dx;
 			}
 
+			// The actual position of the board is in the top left corner of the playing area
 			grid.x = highest_row_count * grid.dx;
 			grid.y = highest_column_count * grid.dy;
 
+			// Informs the screen that the entire window needs to be redrawn since the size changed
 			InvalidateRect(hwnd, NULL, false);
 		}
 
+		// Draws the grid
 		void draw_grid(HDC hdc, COLORREF color) {
 			HBRUSH grid_brush = CreateSolidBrush(color);
 
@@ -137,11 +154,14 @@ class BOARD {
 				FillRect(hdc, &rect, grid_brush);
 			}
 
+			// Deletes objects to prevent memory leaks
 			DeleteObject(grid_brush);
 
 			DeleteObject(&rect);
 		}
 
+		// Draws the current board, 0 is an empty space, 1 is a filled space, 2 is an x, 3 is a spacer
+		// x is literally just an x in the Arial font. This causes issues if the board is unrealistically massive in rows and columns
 		void draw_board(HDC hdc, COLORREF block_color, COLORREF x_color, COLORREF spacer_color, COLORREF spacer_line_color) {
 			HBRUSH block_brush = CreateSolidBrush(block_color);
 			HBRUSH x_brush = CreateSolidBrush(x_color);
@@ -195,6 +215,7 @@ class BOARD {
 			DeleteObject(&rect);
 		}
 
+		// Draws the number hints in their corresponding places
 		void draw_num_hints(HDC hdc, COLORREF grid_color) {
 			HBRUSH num_grid_brush = CreateSolidBrush(grid_color);
 
@@ -256,6 +277,7 @@ class BOARD {
 			DeleteObject(&rect);
 		}
 
+		// Adds a board to replace the old correct one. If current, it will instead replace the current board
 		void add_board(HWND hwnd, int new_board[BOARD_WIDTH][BOARD_HEIGHT], bool current = false) {
 			if (current) {
 				cur_spaces = 0;
@@ -290,7 +312,8 @@ class BOARD {
 			}
 		}
 
-		void set_grid_space(HWND hwnd, POINT pt, int state) {
+		// Updates a position on the board with the state, 0 is an empty space, 1 is a filled space, 2 is an x, 3 is a spacer
+		void set_board_space(HWND hwnd, POINT pt, int state) {
 			if (cur_board[pt.x][pt.y] == 1 && state != 1) {
 				cur_spaces--;
 			}
@@ -299,15 +322,18 @@ class BOARD {
 			}
 			cur_board[pt.x][pt.y] = state;
 			last_edit = state;
-			invalidate_grid_space(hwnd, pt);
+			invalidate_board_space(hwnd, pt);
 		}
 
-		void invalidate_grid_space(HWND hwnd, POINT pt) {
+		// Indicates that a specific part on the board needs to be redrawn since it was updated
+		// This is done for optimization. If it updates the entire screen, elements will flicker as they get redrawn.
+		void invalidate_board_space(HWND hwnd, POINT pt) {
 			RECT rect;
 			SetRect(&rect, pt.x * grid.dx + grid.x + 1, pt.y * grid.dy + grid.y + 1, (pt.x + 1) * grid.dx + grid.x - 1, (pt.y + 1) * grid.dy + grid.y - 1);
 			InvalidateRect(hwnd, &rect, false);
 		}
 
+		// Generates a random board and updates the correct board (and the current board if current is true) with that new board
 		void generate_board(HWND hwnd, bool current = false) {
 			int new_board[BOARD_WIDTH][BOARD_HEIGHT];
 
@@ -328,6 +354,8 @@ class BOARD {
 			}
 		}
 
+		// Checks if the current board is equal to the correct board
+		// Has to update the whole screen if it is correct since a win message is displayed
 		bool check_correct(HWND hwnd) {
 			for (int x = 0; x < BOARD_WIDTH; x++) {
 				for (int y = 0; y < BOARD_HEIGHT; y++) {
@@ -340,6 +368,7 @@ class BOARD {
 			return true;
 		}
 
+		// Converts a point on the screen to a specific grid space on the board
 		POINT point_to_coords(POINT pt) {
 			POINT coords;
 			coords.x = floor((pt.x - grid.x) / grid.dx);
@@ -348,6 +377,7 @@ class BOARD {
 			return coords;
 		}
 
+		// Checks if a point is on the board
 		bool pt_on_board(POINT pt) {
 			if (pt.x > grid.x && pt.x < grid.x + grid.dx * width && pt.y > grid.y && pt.y < grid.y + grid.dy * height) {
 				return true;
@@ -356,6 +386,7 @@ class BOARD {
 		}
 
 	private:
+		// Counts up the row spaces and updates the row_nums variable for use in drawing the number hints
 		void update_row_nums() {
 
 			int iterator = 0;
@@ -377,6 +408,7 @@ class BOARD {
 			}
 		}
 
+		// Returns the count of the highest number of hints
 		int get_highest_row_count() {
 			int count = 0;
 			int size = 0;
@@ -389,6 +421,7 @@ class BOARD {
 			return count;
 		}
 
+		// Same as the row updating method
 		void update_column_nums() {
 
 			int iterator = 0;
@@ -410,6 +443,7 @@ class BOARD {
 			}
 		}
 
+		// Same as the row count method
 		int get_highest_column_count() {
 			int count = 0;
 			int size = 0;
@@ -423,6 +457,7 @@ class BOARD {
 		}
 };
 
+// Initializes the board to be completely empty
 BOARD::BOARD(void) {
 	for (int x = 0; x < width; x++) {
 		for (int y = 0; y < height; y++) {
@@ -433,7 +468,7 @@ BOARD::BOARD(void) {
 
 BOARD board;
 
-
+// This is the main drawing function, it either draws the win screen or the board
 void draw_window_objects(HWND hwnd, bool clearscreen=true) {
 	RECT rect;
 
@@ -462,8 +497,16 @@ void draw_window_objects(HWND hwnd, bool clearscreen=true) {
 	EndPaint(hwnd, &ps);
 }
 
+// This function handles any click related actions by the user. If the user is holding a click button and dragging, mouse_moving is true
+// Left clicking adds or removes a space or an x
+// Right clicking adds or removes an x or a space
+// Shift clicking adds a spacer
+// Both left and right click will directly override a spacer with the corresponding element
+// Clicking and dragging will add or remove the corresponding space to each grid hovered over
+// If the space was removed, it will remove all elements on dragging, x's do not override spaces, spaces don't override x's, spacers will be overridden
 void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam, bool mouse_moving = false) {
 	if (game_over && !mouse_moving) {
+		// Create a new board since the user clicked on the game over screen
 		board.generate_board(hwnd, SHOW_ANSWER);
 		game_over = false;
 	}
@@ -481,17 +524,17 @@ void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam, bool mouse_moving = f
 			switch (board.cur_board[coords.x][coords.y]) {
 			case 0: {
 				if (mouse_moving) {
-					board.set_grid_space(hwnd, coords, last_edit);
+					board.set_board_space(hwnd, coords, last_edit);
 				}
 				else {
 					if (lClick) {
-						board.set_grid_space(hwnd, coords, 1);
+						board.set_board_space(hwnd, coords, 1);
 					}
 					else if (rClick) {
-						board.set_grid_space(hwnd, coords, 2);
+						board.set_board_space(hwnd, coords, 2);
 					}
 					else if (shiftClick) {
-						board.set_grid_space(hwnd, coords, 3);
+						board.set_board_space(hwnd, coords, 3);
 					}
 				}
 				break;
@@ -499,12 +542,12 @@ void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam, bool mouse_moving = f
 			case 1: {
 				if (mouse_moving) {
 					if (last_edit == 0) {
-						board.set_grid_space(hwnd, coords, last_edit);
+						board.set_board_space(hwnd, coords, last_edit);
 					}
 				}
 				else {
 					if (lClick || rClick) {
-						board.set_grid_space(hwnd, coords, 0);
+						board.set_board_space(hwnd, coords, 0);
 					}
 				}
 				break;
@@ -512,12 +555,12 @@ void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam, bool mouse_moving = f
 			case 2: {
 				if (mouse_moving) {
 					if (last_edit == 0) {
-						board.set_grid_space(hwnd, coords, last_edit);
+						board.set_board_space(hwnd, coords, last_edit);
 					}
 				}
 				else {
 					if (lClick || rClick) {
-						board.set_grid_space(hwnd, coords, 0);
+						board.set_board_space(hwnd, coords, 0);
 					}
 				}
 				break;
@@ -525,18 +568,18 @@ void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam, bool mouse_moving = f
 			case 3: {
 				if (mouse_moving) {
 					if (last_edit != 3) {
-						board.set_grid_space(hwnd, coords, last_edit);
+						board.set_board_space(hwnd, coords, last_edit);
 					}
 				}
 				else {
 					if (lClick) {
-						board.set_grid_space(hwnd, coords, 1);
+						board.set_board_space(hwnd, coords, 1);
 					}
 					else if (rClick) {
-						board.set_grid_space(hwnd, coords, 2);
+						board.set_board_space(hwnd, coords, 2);
 					}
 					else if (shiftClick) {
-						board.set_grid_space(hwnd, coords, 0);
+						board.set_board_space(hwnd, coords, 0);
 					}
 				}
 				break;
@@ -550,6 +593,8 @@ void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam, bool mouse_moving = f
 	}
 }
 
+// Windows message handling function
+// This is the function that handles all of the user inputs (and messages that result from those inputs)
 LRESULT CALLBACK window_callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	LRESULT result = 0;
 
@@ -580,12 +625,15 @@ LRESULT CALLBACK window_callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 	case WM_KEYDOWN: {
 		// 0x52 is the R key
+		// Resets the board, since this program isn't smart enough to tell if a board is completable, I have increased the amount of correct spaces
+		// Increasing the spaces has made it much easier but the majority of games should be completable, however, if necessary the user can reset it
 		if (wParam == 0x52) {
 			board.generate_board(hwnd, SHOW_ANSWER);
 		}
 		return 0;
 	}
 
+	// Used to handle mouse dragging
 	case WM_MOUSEMOVE: {
 		if (wParam == MK_LBUTTON || wParam == MK_RBUTTON || wParam == MK_LBUTTON + MK_SHIFT || wParam == MK_RBUTTON + MK_SHIFT) {
 			POINT pt; 
@@ -618,6 +666,7 @@ LRESULT CALLBACK window_callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 	return result;
 }
 
+// This is the main function which is run first
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 	// Register the window class.
 	const wchar_t CLASS_NAME[] = L"Picross Window Class";
@@ -650,18 +699,15 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 		return 0;
 	}
 
+	// Randomizes the seed
 	if (RANDOM_PUZZLES) {
 		srand(time(NULL));
 	}
 	board.generate_board(hwnd, SHOW_ANSWER);
 
-	/*board.cur_board[0][0] = 1;
-	board.cur_board[1][0] = 1;
-	board.cur_board[0][1] = 1;*/
-
 	ShowWindow(hwnd, nCmdShow);
-	//UpdateWindow(hwnd);
 
+	// This is the main loop of the program, it handles inputs
 	while (running) {
 		MSG msg = { };
 		while (GetMessage(&msg, NULL, 0, 0) > 0)
