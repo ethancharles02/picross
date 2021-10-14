@@ -1,7 +1,8 @@
-﻿// Add a button to reset the board
+﻿// Add comments
 // Add keyboard controls as alternate to mouse
 // Add counter when you drag your mouse while holding a button
 
+// Packages that are used in the program
 #include <windows.h>
 #include <iostream>
 #include <vector>
@@ -10,39 +11,45 @@
 
 using namespace std;
 
+// Running indicates if the program should still be checking for user inputs, when this is set to false, the program ends
 bool running = true;
+// Game over will change the screen to show a message that the puzzle has been completed
 bool game_over = false;
-bool skip_size = false;
-bool skip_paint = false;
+
+// Last edit refers to the number identifier of what the user last did (adding a space, x, spacer, etc.)
+// it is used solely for holding a button and dragging the mouse so that the user doesn't have to click every space
 int last_edit = 0;
 
-//const int screen_width = 1920;
-//const int screen_height = 1080;
+// Changes as the user resizes the window, used for resizing the picross board
 int window_width = 800;
 int window_height = 800;
 
+// Board width and height indicate the grid of the picross board, higher numbers make for a harder puzzle
 const int BOARD_WIDTH = 10;
 const int BOARD_HEIGHT = 10;
+
+// All Grid variables are somewhat deprecated, they are only used for initializers and change near immediately to fit to the window
 const int GRID_X = 0;
 const int GRID_Y = 0;
 const double GRID_DX = window_width / BOARD_WIDTH;
 const double GRID_DY = window_height / BOARD_HEIGHT;
 
+// The percentage (as a decimal) for how many correct spaces there should be. 
+// This is a random chance so it can vary. It is accurate to 6 decimal places
 const double PERCENT_CORRECT = 0.7;
 
+// Colors for each of the elements of the picross board
+const COLORREF BACKGROUND_COLOR = RGB(255, 255, 255);
+const COLORREF TEXT_COLOR = RGB(0, 0, 0);
 const COLORREF GRID_LINE_COLOR = RGB(100, 100, 100);
 const COLORREF SPACE_COLOR = RGB(0, 0, 0);
 const COLORREF BLOCK_SPACE_COLOR = RGB(255, 0, 0);
 const COLORREF SPACER_COLOR = RGB(150, 150, 150);
 const COLORREF SPACER_LINE_COLOR = RGB(150, 150, 150);
 const COLORREF NUM_GRID_LINE_COLOR = RGB(100, 100, 100);
-const COLORREF NUM_COLOR = RGB(0, 0, 0);
 
-const bool random_puzzles = true;
-const bool show_answer = false;
-
-//int window_x = 0;
-//int window_y = 0;
+const bool RANDOM_PUZZLES = true;
+const bool SHOW_ANSWER = false;
 
 bool rand_chance(double percent) {
 	if (percent >= 1) {
@@ -83,11 +90,9 @@ class BOARD {
 		int height = BOARD_HEIGHT;
 
 		int cur_board[BOARD_WIDTH][BOARD_HEIGHT];
-		//vector<int> cur_board;
 		int cur_spaces = 0;
 
 		int correct_board[BOARD_WIDTH][BOARD_HEIGHT];
-		//vector<int> correct_board;
 		int correct_spaces = 0;
 
 		array<vector<int>, BOARD_WIDTH> column_nums;
@@ -121,8 +126,6 @@ class BOARD {
 			HBRUSH grid_brush = CreateSolidBrush(color);
 
 			RECT rect = { 0, 0, 0, 0 };
-			/*float dx = window_width / width;
-			float dy = window_height / height;*/
 
 			for (int column = 0; column <= width; column++) {
 				SetRect(&rect, column * grid.dx - 1 + grid.x, grid.y, column * grid.dx + 1 + grid.x, grid.dy * height + grid.y);
@@ -143,7 +146,7 @@ class BOARD {
 			HBRUSH block_brush = CreateSolidBrush(block_color);
 			HBRUSH x_brush = CreateSolidBrush(x_color);
 			HBRUSH spacer_brush = CreateSolidBrush(spacer_color);
-			HBRUSH spacer_brush_inner = CreateSolidBrush(RGB(255, 255, 255));
+			HBRUSH spacer_brush_inner = CreateSolidBrush(BACKGROUND_COLOR);
 			HPEN spacer_pen = CreatePen(PS_SOLID, 1, spacer_line_color);
 
 			RECT rect = { 0, 0, 0, 0 };
@@ -165,16 +168,13 @@ class BOARD {
 
 						DeleteObject(hFont);
 
-						//SetRect(&rect, x * grid.dx + grid.x + 1, y * grid.dy + grid.y + 1, (x + 1) * grid.dx + grid.x - 1, (y + 1) * grid.dy + grid.y - 1);
 						SetRect(&rect, x * grid.dx + grid.x + 1 + grid.dx / 2, y * grid.dy + grid.y + 1, x * grid.dx + grid.x + 1 + grid.dx / 2, y * grid.dy + grid.y + 1);
-						//FillRect(hdc, &rect, x_brush);
 						SetTextColor(hdc, x_color);
 
 						DrawText(hdc, L"x", -1, &rect, DT_NOCLIP);
 						break;
 					} 
 					case 3: {
-						//spacer_brush
 						SelectObject(hdc, spacer_brush);
 						SelectObject(hdc, spacer_pen);
 						Ellipse(hdc, x * grid.dx + grid.x + 1 + grid.dx / 5, y * grid.dy + grid.y + 1 + grid.dy / 5, (x + 1) * grid.dx + grid.x - 1 - grid.dx / 5, (y + 1) * grid.dy + grid.y - 1 - grid.dy / 5);
@@ -195,12 +195,10 @@ class BOARD {
 			DeleteObject(&rect);
 		}
 
-		void draw_num_hints(HDC hdc, COLORREF grid_color, COLORREF num_color) {
+		void draw_num_hints(HDC hdc, COLORREF grid_color) {
 			HBRUSH num_grid_brush = CreateSolidBrush(grid_color);
 
 			RECT rect = { 0, 0, 0, 0 };
-			/*float dx = window_width / width;
-			float dy = window_height / height;*/
 
 			for (int column = 0; column <= width; column++) {
 				SetRect(&rect, column * grid.dx - 1 + grid.x, grid.y - highest_column_count * grid.dy, column * grid.dx + 1 + grid.x, grid.y);
@@ -229,7 +227,8 @@ class BOARD {
 
 					//Sets the coordinates for the rectangle in which the text is to be formatted.
 					SetRect(&rect, grid.x + grid.dx * column + grid.dx / 2, grid.y - grid.dy * iterator - grid.dy, grid.x + grid.dx * column + grid.dx / 2, grid.y - grid.dy * iterator - grid.dy);
-					SetTextColor(hdc, RGB(0, 0, 0));
+					SetTextColor(hdc, TEXT_COLOR);
+					SetBkColor(hdc, BACKGROUND_COLOR);
 
 					DrawText(hdc, buffer, -1, &rect, DT_NOCLIP);
 					DeleteObject(buffer);
@@ -245,7 +244,8 @@ class BOARD {
 
 					//Sets the coordinates for the rectangle in which the text is to be formatted.
 					SetRect(&rect, grid.x - grid.dx * iterator - grid.dx / 2, grid.y + grid.dy * row + 1, grid.x - grid.dx * iterator - grid.dx / 2, grid.y + grid.dy * row + grid.dy);
-					SetTextColor(hdc, RGB(0, 0, 0));
+					SetTextColor(hdc, TEXT_COLOR);
+					SetBkColor(hdc, BACKGROUND_COLOR);
 
 					DrawText(hdc, buffer, -1, &rect, DT_NOCLIP);
 					DeleteObject(buffer);
@@ -317,7 +317,6 @@ class BOARD {
 						new_board[x][y] = 1;
 					}
 					
-					//int num = rand() % 2;
 					cur_board[x][y] = 0;
 				}
 			}
@@ -436,7 +435,6 @@ BOARD board;
 
 
 void draw_window_objects(HWND hwnd, bool clearscreen=true) {
-	//RECT rect = { 0, 0, window_width - 1, window_height - 1 };
 	RECT rect;
 
 	PAINTSTRUCT ps;
@@ -444,7 +442,7 @@ void draw_window_objects(HWND hwnd, bool clearscreen=true) {
 
 	SetTextAlign(hdc, TA_CENTER);
 
-	HBRUSH brush = CreateSolidBrush(RGB(255, 255, 255));
+	HBRUSH brush = CreateSolidBrush(BACKGROUND_COLOR);
 	SetRect(&rect, 0, 0, 10, 10);
 	if (clearscreen) {
 		SetRect(&rect, 0, 0, window_width - 1, window_height -1);
@@ -458,16 +456,15 @@ void draw_window_objects(HWND hwnd, bool clearscreen=true) {
 	else {
 		board.draw_grid(hdc, GRID_LINE_COLOR);
 		board.draw_board(hdc, SPACE_COLOR, BLOCK_SPACE_COLOR, SPACER_COLOR, SPACER_LINE_COLOR);
-		board.draw_num_hints(hdc, NUM_GRID_LINE_COLOR, NUM_COLOR);
+		board.draw_num_hints(hdc, NUM_GRID_LINE_COLOR);
 	}
-	//draw_grid(hdc, 100, 100, 20, 20, 4, 4, RGB(100, 100, 100));
 
 	EndPaint(hwnd, &ps);
 }
 
 void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam, bool mouse_moving = false) {
 	if (game_over && !mouse_moving) {
-		board.generate_board(hwnd, show_answer);
+		board.generate_board(hwnd, SHOW_ANSWER);
 		game_over = false;
 	}
 	else {
@@ -551,7 +548,6 @@ void handle_click(HWND hwnd, WPARAM wParam, LPARAM lParam, bool mouse_moving = f
 			}
 		}
 	}
-	//skip_size = true;
 }
 
 LRESULT CALLBACK window_callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -560,7 +556,6 @@ LRESULT CALLBACK window_callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 	switch (uMsg) 
 	{
 	case WM_CLOSE: {
-		//MessageBox(hwnd, L"Test", L"Test", MB_OKCANCEL);
 		DestroyWindow(hwnd);
 		return 0;
 	}
@@ -568,23 +563,26 @@ LRESULT CALLBACK window_callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 	case WM_DESTROY: {
 		running = false;
 		PostQuitMessage(0);
-		//DestroyWindow(hwnd);
 		return 0;
 	}
 
 	case WM_LBUTTONDOWN: {
-		//if (wParam != MK_RBUTTON) {
 		handle_click(hwnd, wParam, lParam);
 		SendMessage(hwnd, WM_PAINT, NULL, NULL);
-		//}
 		return 0;
 	}
 
 	case WM_RBUTTONDOWN: {
-		//if (wParam != MK_LBUTTON && wParam != MK_LBUTTON + MK_SHIFT) {
 		handle_click(hwnd, wParam, lParam);
 		SendMessage(hwnd, WM_PAINT, NULL, NULL);
-		//}
+		return 0;
+	}
+
+	case WM_KEYDOWN: {
+		// 0x52 is the R key
+		if (wParam == 0x52) {
+			board.generate_board(hwnd, SHOW_ANSWER);
+		}
 		return 0;
 	}
 
@@ -602,26 +600,14 @@ LRESULT CALLBACK window_callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 	}
 
 	case WM_SIZE: {
-		if (!skip_size) {
-			window_width = LOWORD(lParam);
-			window_height = HIWORD(lParam);
+		window_width = LOWORD(lParam);
+		window_height = HIWORD(lParam);
 
-			board.update(hwnd);
-		}
-		else {
-			skip_size = false;
-		}
-
-		//draw_window_objects(hwnd, true);
+		board.update(hwnd);
 	}
 
 	case WM_PAINT: {
-		if (!skip_paint) {
-			draw_window_objects(hwnd, true);
-		}
-		else {
-			skip_paint = false;
-		}
+		draw_window_objects(hwnd, true);
 		return 0;
 	}
 
@@ -664,10 +650,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 		return 0;
 	}
 
-	if (random_puzzles) {
+	if (RANDOM_PUZZLES) {
 		srand(time(NULL));
 	}
-	board.generate_board(hwnd, show_answer);
+	board.generate_board(hwnd, SHOW_ANSWER);
 
 	/*board.cur_board[0][0] = 1;
 	board.cur_board[1][0] = 1;
