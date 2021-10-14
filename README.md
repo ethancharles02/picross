@@ -6,7 +6,7 @@ I have named it Picross since that was the nonogram version I played
 Here is the Wikipedia link if you are interested [Wikipedia Nonograms](https://en.wikipedia.org/wiki/Nonogram)
 
 
-The controls are as follows:
+## Controls
 
 Left click: add a black space
 
@@ -14,6 +14,7 @@ Right click: add an x (usually indicates that a black space can't be there)
 
 Shift click (left or right): add a spacer (many people use these differently I use them as theoretical x marks)
 
+## Demo Video
 
 Here is a video I made that demonstrates the program
 [Software Demo Video](https://youtu.be/Rc6-jj_BsEE)
