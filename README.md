@@ -3,6 +3,7 @@
 This is a program that recreates the popular nonogram puzzles (also known as Hanjie, Paint by Numbers, Picross, Griddlers, Pic-a-Pix, as specified by Wikipedia)
 
 I have named it Picross since that was the nonogram version I played
+
 Here is the Wikipedia link if you are interested [Wikipedia Nonograms](https://en.wikipedia.org/wiki/Nonogram)
 
 
